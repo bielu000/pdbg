@@ -2,16 +2,36 @@
 #include <map>
 #include <Windows.h>
 
+typedef struct BreakpointTag Breakpoint, *PBreakpoint;
+typedef VOID(*PBreakpointHandler)(PBreakpoint breakpoint, DEBUG_EVENT *dbgEvent, PDWORD continue_status);
+
+struct BreakpointTag
+{
+	LPVOID address;
+	BYTE byte;
+	PBreakpointHandler handler;
+};
+
 class PDbg
 {
 public:
 	PDbg() = default;
-	~PDbg() = default;
+	~PDbg();
 	bool StartDebugActiveProcess(DWORD processId);
+	bool StartDebugNewProcess(LPTSTR processName);
+	bool AddBreakpoint(LPVOID address, HANDLE hProecss, PBreakpointHandler pbreakpoint_handler = NULL);
+	bool RemoveBreakpoint(LPVOID address, HANDLE hProcess);
+	bool SetThreadTrapFlag(HANDLE hThread);
+	bool Shutdown();
 
 private:
-	std::map<DWORD, HANDLE> _processes;
-	std::map<DWORD, HANDLE> _threads;
+	DWORD _startupProcessId;
+	LPVOID _image_base; 
+	DWORD _image_size;
+	std::map<DWORD, HANDLE> _processes; //handle all processes
+	std::map<DWORD, HANDLE> _threads; // handle all threads
+	std::map<LPVOID, PBreakpoint> _breakpoints; // handle all breakpoints
+	std::map<DWORD, LPVOID> _pending_breakpoints; // handle breakpoints to recreate
 
 	void run();
 	void handle_create_process_debug_event(DEBUG_EVENT* dbgEvent);

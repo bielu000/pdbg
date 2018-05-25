@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "PDbg.h"
 #include <iostream>
+#include <WinBase.h>
+#include <Psapi.h>
+
+#pragma comment(lib, "psapi.lib")
 
 bool PDbg::StartDebugActiveProcess(DWORD processId)
 {
@@ -11,7 +15,42 @@ bool PDbg::StartDebugActiveProcess(DWORD processId)
 		return false;
 	}
 
+	this->_startupProcessId = processId;
+
 	this->run();
+
+	return true;
+}
+
+bool PDbg::StartDebugNewProcess(LPTSTR processName)
+{
+	PROCESS_INFORMATION pi;
+	STARTUPINFO si;
+
+	ZeroMemory(&pi, sizeof(pi));
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+
+	if (!CreateProcess(processName, NULL,
+		NULL, NULL, FALSE,
+		DEBUG_ONLY_THIS_PROCESS | CREATE_NEW_CONSOLE,
+		NULL, NULL, &si, &pi))
+	{
+		std::cout << "Cannot create process" << std::endl;
+
+		return FALSE;
+	}
+
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
+	this->_startupProcessId = pi.dwProcessId;
+	this->run();
+}
+
+bool PDbg::Shutdown()
+{
+	DebugActiveProcessStop(this->_startupProcessId);
 
 	return true;
 }
@@ -55,6 +94,10 @@ void PDbg::handle_create_process_debug_event(DEBUG_EVENT * dbgEvent)
 
 	this->_processes[dbgEvent->dwProcessId] = dbgEvent->u.CreateProcessInfo.hProcess;
 	this->_threads[dbgEvent->dwThreadId] = dbgEvent->u.CreateThread.hThread;
+
+	this->AddBreakpoint((LPVOID)dbgEvent->u.CreateProcessInfo.lpStartAddress, this->_processes[dbgEvent->dwProcessId], NULL);
+	
+	this->_image_base = dbgEvent->u.CreateProcessInfo.lpBaseOfImage;
 }
 
 void PDbg::handle_create_thread_debug_event(DEBUG_EVENT * dbgEvent)
@@ -76,6 +119,55 @@ void PDbg::handle_exception_debug_event(DEBUG_EVENT * dbgEvent)
 	{
 		TerminateProcess(this->_processes[dbgEvent->dwProcessId], 0);
 	}
+
+
+	LPVOID excp_address = dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress;
+	DWORD con_status = DBG_EXCEPTION_NOT_HANDLED;
+
+	switch (dbgEvent->u.Exception.ExceptionRecord.ExceptionCode)
+	{
+		case EXCEPTION_BREAKPOINT:
+			std::cout << "EXCEPTION_BREAKPOINT" << std::endl;
+
+			if (this->_breakpoints.find(excp_address) != this->_breakpoints.end()) // user defined breakpoint
+			{
+				if (this->_breakpoints[excp_address]->handler != NULL) 
+				{
+					this->_breakpoints[excp_address]->handler(this->_breakpoints[excp_address],dbgEvent, &con_status);
+				}
+
+				this->SetThreadTrapFlag(this->_threads[dbgEvent->dwThreadId]);
+			
+				this->_pending_breakpoints[dbgEvent->dwThreadId] = excp_address;
+			
+				this->RemoveBreakpoint(dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress, this->_processes[dbgEvent->dwProcessId]);
+			}
+			else // default kernel exception	
+			{
+				std::cout << "Default process exception. SizeOfImage captured." << std::endl;
+
+				MODULEINFO module_info;	
+
+				GetModuleInformation(this->_processes[dbgEvent->dwProcessId], (HMODULE)this->_image_base, &module_info, sizeof(module_info));
+				
+				this->_image_size = module_info.SizeOfImage;
+				con_status = DBG_CONTINUE;
+				this->SetThreadTrapFlag(this->_threads[dbgEvent->dwThreadId]);
+			}
+
+
+		break;
+
+		case STATUS_SINGLE_STEP:
+			if (this->_pending_breakpoints.find(dbgEvent->dwThreadId) != this->_pending_breakpoints.end())
+			{
+				std::cout << "Single step. Pending..." << std::endl;
+				this->AddBreakpoint(this->_pending_breakpoints[dbgEvent->dwThreadId], this->_processes[dbgEvent->dwProcessId], NULL);
+				this->_processes.erase(dbgEvent->dwThreadId);
+			}
+		break;
+	}
+
 
 	ContinueDebugEvent(dbgEvent->dwProcessId, dbgEvent->dwThreadId, DBG_EXCEPTION_NOT_HANDLED);
 }
@@ -135,4 +227,91 @@ void PDbg::handle_exit_process_debug_event(DEBUG_EVENT * dbgEvent)
 
 	this->_processes.erase(dbgEvent->dwProcessId);
 	this->_threads.erase(dbgEvent->dwThreadId);
+}
+
+bool PDbg::AddBreakpoint(LPVOID address, HANDLE hProcess, PBreakpointHandler pbreakpoint_handler)
+{
+	if (this->_breakpoints.find(address) != this->_breakpoints.end())
+	{
+		return TRUE;
+	}
+
+	BYTE byte; 
+	SIZE_T bytes_read;
+
+	if (!ReadProcessMemory(hProcess, address, &byte, sizeof(BYTE), &bytes_read))
+	{
+		std::cout << "Cannot read instruction byte.";
+		std::cout << "Error " << GetLastError() << std::endl;
+
+		return FALSE;
+	}
+
+	BYTE int_3_instr = 0xcc;
+	
+	SIZE_T bytes_written;
+	if (!WriteProcessMemory(hProcess, address, &int_3_instr, sizeof(BYTE), &bytes_written))
+	{
+		std::cout << "Cannot write debug instruction byte." << std::endl;
+
+		return FALSE;
+	}
+
+	printf("Instruckaj %#010x\n", byte);
+
+	auto bp = new Breakpoint;
+	bp->address = address;
+	bp->byte = byte;
+	bp->handler = pbreakpoint_handler;
+	
+	this->_breakpoints[address] = bp;
+}
+
+bool PDbg::RemoveBreakpoint(LPVOID address, HANDLE hProcess)
+{
+	if (this->_breakpoints.find(address) == this->_breakpoints.end())
+	{
+		return FALSE;
+	}
+
+	SIZE_T bytes_processed;
+	auto* breakpoint = this->_breakpoints[address];
+	
+	if (!WriteProcessMemory(hProcess, address, &breakpoint->byte, sizeof(BYTE), &bytes_processed))
+	{
+		std::cout << "Remove breakpoint: Cannot write original byte." << std::endl;
+		return FALSE;
+	}
+
+	delete this->_breakpoints[address];
+	this->_breakpoints.erase(address);
+
+	return TRUE;
+}
+
+bool PDbg::SetThreadTrapFlag(HANDLE hThread)
+{
+	const unsigned int k86trapflag = (1 << 8);
+	CONTEXT ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	
+	ctx.ContextFlags = CONTEXT_CONTROL;
+	
+	if (!GetThreadContext(hThread, &ctx))
+	{
+		std::cout << "Cannot get thread context." << std::endl;
+
+		return FALSE;
+	}
+
+	ctx.EFlags |= k86trapflag;
+
+	if (!SetThreadContext(hThread, &ctx))
+	{
+		std::cout << "Cannot set thread context." << std::endl;
+		
+		return FALSE;
+	}
+
+	return TRUE;
 }
