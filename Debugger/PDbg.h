@@ -21,7 +21,7 @@ public:
 	bool StartDebugNewProcess(LPTSTR processName);
 	bool AddBreakpoint(LPVOID address, HANDLE hProecss, PBreakpointHandler pbreakpoint_handler = NULL);
 	bool RemoveBreakpoint(LPVOID address, HANDLE hProcess);
-	bool SetThreadTrapFlag(HANDLE hThread);
+	bool SetThreadTrapFlag(DWORD threadId);
 	bool Shutdown();
 
 private:

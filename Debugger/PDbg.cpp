@@ -93,7 +93,7 @@ void PDbg::handle_create_process_debug_event(DEBUG_EVENT * dbgEvent)
 	}
 
 	this->_processes[dbgEvent->dwProcessId] = dbgEvent->u.CreateProcessInfo.hProcess;
-	this->_threads[dbgEvent->dwThreadId] = dbgEvent->u.CreateThread.hThread;
+	this->_threads[dbgEvent->dwThreadId] = dbgEvent->u.CreateProcessInfo.hThread;
 
 	this->AddBreakpoint((LPVOID)dbgEvent->u.CreateProcessInfo.lpStartAddress, this->_processes[dbgEvent->dwProcessId], NULL);
 	
@@ -120,7 +120,6 @@ void PDbg::handle_exception_debug_event(DEBUG_EVENT * dbgEvent)
 		TerminateProcess(this->_processes[dbgEvent->dwProcessId], 0);
 	}
 
-
 	LPVOID excp_address = dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress;
 	DWORD con_status = DBG_EXCEPTION_NOT_HANDLED;
 
@@ -136,7 +135,7 @@ void PDbg::handle_exception_debug_event(DEBUG_EVENT * dbgEvent)
 					this->_breakpoints[excp_address]->handler(this->_breakpoints[excp_address],dbgEvent, &con_status);
 				}
 
-				this->SetThreadTrapFlag(this->_threads[dbgEvent->dwThreadId]);
+				this->SetThreadTrapFlag(dbgEvent->dwThreadId);
 			
 				this->_pending_breakpoints[dbgEvent->dwThreadId] = excp_address;
 			
@@ -152,7 +151,7 @@ void PDbg::handle_exception_debug_event(DEBUG_EVENT * dbgEvent)
 				
 				this->_image_size = module_info.SizeOfImage;
 				con_status = DBG_CONTINUE;
-				this->SetThreadTrapFlag(this->_threads[dbgEvent->dwThreadId]);
+				this->SetThreadTrapFlag(dbgEvent->dwThreadId);
 			}
 
 
@@ -174,7 +173,7 @@ void PDbg::handle_exception_debug_event(DEBUG_EVENT * dbgEvent)
 
 void PDbg::handle_load_dll_debug_event(DEBUG_EVENT * dbgEvent)
 {
-	printf("Event: DLL loaded, Address: %p\n", dbgEvent->u.LoadDll.lpBaseOfDll);
+	//printf("Event: DLL loaded, Address: %p\n", dbgEvent->u.LoadDll.lpBaseOfDll);
 
 	if (dbgEvent->u.LoadDll.hFile != NULL)
 	{
@@ -257,8 +256,6 @@ bool PDbg::AddBreakpoint(LPVOID address, HANDLE hProcess, PBreakpointHandler pbr
 		return FALSE;
 	}
 
-	printf("Instruckaj %#010x\n", byte);
-
 	auto bp = new Breakpoint;
 	bp->address = address;
 	bp->byte = byte;
@@ -289,18 +286,20 @@ bool PDbg::RemoveBreakpoint(LPVOID address, HANDLE hProcess)
 	return TRUE;
 }
 
-bool PDbg::SetThreadTrapFlag(HANDLE hThread)
+bool PDbg::SetThreadTrapFlag(DWORD threadId)
 {
 	const unsigned int k86trapflag = (1 << 8);
 	CONTEXT ctx;
 	memset(&ctx, 0, sizeof(ctx));
 	
 	ctx.ContextFlags = CONTEXT_CONTROL;
-	
+
+	auto hThread = this->_threads[threadId];
+
 	if (!GetThreadContext(hThread, &ctx))
 	{
-		std::cout << "Cannot get thread context." << std::endl;
-
+		std::cout << "Cannot get thread context. Error:" << GetLastError() << std::endl;
+		
 		return FALSE;
 	}
 
