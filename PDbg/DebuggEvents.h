@@ -1,51 +1,85 @@
 #pragma once
 #include <string>
 #include <Windows.h> //remove later
+#include "EventCodes.h"
 
-typedef struct {
-	std::string message;
+class BaseEvent {
+public:
+	unsigned int eventCode;
+};
+
+class DebuggerStarted : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::debugger_started;
 	int processId;
 	std::string appName;
-} DebuggerStarted;
+};
 
-typedef struct {
-	std::string message;
+class DebuggerErrorOccurred : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::debugger_error;
 	unsigned long systemErrorCode;
-} DebuggerErrorOccurred;
+	unsigned int  debuggerErrorCode;
+};
 
-typedef struct {
-	std::string message;
+class SingleStepSet : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::single_step_set;
+	unsigned long threadId;
+};
+
+class BreakpointAdded : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::breakpoint_added;
+};
+
+class BreakpointRemoved : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::breakpoint_removed;
+};
+
+
+//Debug events
+class ProcessCreated : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::proces_created;
 	unsigned long processId;
 	unsigned long* baseAddress; //type
-} ProcessCreated;
+};
 
-typedef struct {
-	std::string message;
+class ProcessExited : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::process_exited;
 	unsigned long processId;
 	unsigned long exitCode;
-} ProcessExited;
+};
 
-typedef struct {
-	std::string message;
+class ThreadCreated : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::thread_created;
 	unsigned long threadId;
-} ThreadCreated;
+} ;
 
-typedef struct {
-	std::string message;
+class ThreadExited : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::thread_exited;
 	unsigned long threadId;
 	unsigned long exitCode;
-} ThreadExited;
+};
 
-typedef struct {
-	std::string message;
-} DllLoaded;
+class DllLoaded : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::dll_loaded;
+};
 
-typedef struct {
-	std::string message;
-} DllUnloaded;
+class DllUnloaded : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::dll_unloaded;
+} ;
 
-typedef struct {
-	std::string message;
+class OutputDebugStringReveived : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::debug_string_received;
 	std::string value;
-} OutputDebugStringReveived;
+} ;
 

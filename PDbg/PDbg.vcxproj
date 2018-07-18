@@ -151,6 +151,9 @@
     <ClInclude Include="ConsoleController.h" />
     <ClInclude Include="Debugger.h" />
     <ClInclude Include="DebuggEvents.h" />
+    <ClInclude Include="ErrorCodes.h" />
+    <ClInclude Include="EventCodes.h" />
+    <ClInclude Include="dbgnum.h" />
     <ClInclude Include="IAppController.h" />
     <ClInclude Include="Signal.h" />
     <ClInclude Include="stdafx.h" />

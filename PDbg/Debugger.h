@@ -16,8 +16,13 @@ public:
 	bool removeBreakpoint(LPVOID address, HANDLE hProcess);
 
 	//Does this is not going outside scope? Think through
+	//DEBUGGER FUNCTIONALITY EVENTS
 	signals::signal<void(const DebuggerStarted&)> onStarted;
 	signals::signal<void(const DebuggerErrorOccurred&)> onError;
+	signals::signal<void(const SingleStepSet&)> onSingleStepSet;
+	signals::signal<void(const BreakpointAdded&)> onBreakpointAdded;
+	signals::signal<void(const BreakpointRemoved&)> onBreakpointRemoved;
+	
 	
 	//DEBUG EVENTS
 	signals::signal<void(const ProcessCreated&)> onProcessCreated;

@@ -39,6 +39,15 @@
     <ClInclude Include="Breakpoint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EventCodes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ErrorCodes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dbgnum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

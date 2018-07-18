@@ -1,4 +1,5 @@
-﻿  Debugger.cpp
-c:\users\pb\source\repos\pdbg\pdbg\debugger.cpp(132): warning C4477: 'printf' : format string '%#08x' requires an argument of type 'unsigned int', but variadic argument 2 has type 'LPVOID'
-c:\users\pb\source\repos\pdbg\pdbg\debugger.cpp(154): warning C4477: 'printf' : format string '%#08x' requires an argument of type 'unsigned int', but variadic argument 2 has type 'LPVOID'
+﻿  ConsoleController.cpp
+  Debugger.cpp
+  PDbg.cpp
+  Generating Code...
   PDbg.vcxproj -> C:\Users\pb\source\repos\PDbg\Debug\PDbg.exe

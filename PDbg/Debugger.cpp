@@ -4,6 +4,8 @@
 #include <map>
 #include <iostream>
 #include <sstream>
+#include "EventCodes.h"
+#include "ErrorCodes.h"
 
 bool Debugger::run(std::string application)
 {	
@@ -22,7 +24,9 @@ bool Debugger::run(std::string application)
 		DEBUG_ONLY_THIS_PROCESS | CREATE_NEW_CONSOLE,
 		NULL, NULL, &si, &pi))
 	{
-		onError(DebuggerErrorOccurred { "Additional info in system codes", static_cast<unsigned long>(GetLastError())});
+		auto ev = DebuggerErrorOccurred();
+		ev.systemErrorCode = static_cast<unsigned long>(GetLastError());
+		onError(ev);
 
 		return false;
 	}
@@ -30,7 +34,8 @@ bool Debugger::run(std::string application)
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
 
-	onStarted(DebuggerStarted{ "Debugger Started correctly." });
+	auto ev = DebuggerStarted();
+	onStarted(ev);
 	
 	this->listenEvents();
 
@@ -61,12 +66,8 @@ void Debugger::listenEvents()
 bool Debugger::setSingleStep(DWORD threadId)
 {
 	if (_threads.find(threadId) == _threads.end()) {
-		std::stringstream ss;
-		ss << "Thread with id: " << threadId << " does not exist.";
-
 		auto ev = DebuggerErrorOccurred();
-		ev.message = ss.str();
-
+		ev.debuggerErrorCode = error_codes::thread_not_exits;
 		onError(ev);
 
 		return false;
@@ -78,12 +79,9 @@ bool Debugger::setSingleStep(DWORD threadId)
 	ctx.ContextFlags = CONTEXT_CONTROL;
 	
 	if (!GetThreadContext(_threads[threadId], &ctx)) {
-		std::stringstream ss;
-		ss << "Cannot get context for thread: " << threadId;
-
 		auto ev = DebuggerErrorOccurred();
-		ev.message = ss.str();
 		ev.systemErrorCode = static_cast<unsigned long>(GetLastError());
+		ev.debuggerErrorCode = error_codes::cannot_set_context;
 
 		onError(ev);
 
@@ -92,18 +90,18 @@ bool Debugger::setSingleStep(DWORD threadId)
 
 	ctx.EFlags |= cTrapFlag;
 
-	if (!SetThreadContext(_threads[threadId], &ctx)) {
-		std::stringstream ss;
-		ss << "Cannot set context for thread: " << threadId; 
-
+	if (!SetThreadContext(_threads[threadId], &ctx)) { 
 		auto ev = DebuggerErrorOccurred();
-		ev.message = ss.str();
+		ev.debuggerErrorCode = error_codes::cannot_set_context;
 		ev.systemErrorCode = static_cast<unsigned long>(GetLastError());
-
 		onError(ev);
 
 		return false;
 	}
+
+	auto ev = SingleStepSet();
+	ev.threadId = static_cast<unsigned long>(threadId);
+	onSingleStepSet(ev);
 
 	return true;
 }
@@ -114,7 +112,9 @@ bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess)
 	SIZE_T bytesRead;
 	
 	if (!ReadProcessMemory(hProcess, address, &originalInstruction, sizeof(BYTE), &bytesRead)) {
-		std::cout << "Cannot read process mem. Refactor breakpoint" << std::endl;
+		auto ev = DebuggerErrorOccurred();
+		ev.debuggerErrorCode = error_codes::cannot_read_process_memory;
+		onError(ev);
 		
 		return false;
 	}
@@ -123,21 +123,30 @@ bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess)
 	SIZE_T bytesWritten;
 
 	if (!WriteProcessMemory(hProcess, address, &int3optcode, sizeof(BYTE), &bytesWritten)) {
-		std::cout << "Cannot write process mem. Reafactor breakpoint" << std::endl;
+		auto ev = DebuggerErrorOccurred();
+		ev.debuggerErrorCode = error_codes::cannot_write_process_memory;
+		onError(ev);
 
 		return false;
 	}
 
 	_breakpoints->add(address, originalInstruction);
-	printf("Dodano breakpoint, Instrukcja: %#08x, adres: %#08x\n", originalInstruction, address);
+	
+	auto ev = BreakpointAdded();
+	onBreakpointAdded(ev);
+
 	return true;
+
 }
 
 bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
 {
 	//add error messages
 	if (!_breakpoints->exist(address)) {
-		std::cout << "Breakpoint not exist!!! removeBreakpoint" << std::endl;
+		auto ev = DebuggerErrorOccurred();
+		ev.debuggerErrorCode = error_codes::breakpoint_not_exist;	
+		onError(ev);
+
 		return false;
 	}
 
@@ -146,13 +155,16 @@ bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
 	BYTE optcode = bp->instruction();
 
 	if (!WriteProcessMemory(hProcess, bp->address(), &optcode, sizeof(BYTE), &bytes_written)) {
-		std::cout << "Cannot write memory, remove breakpiont" << std::endl;
+		auto ev = DebuggerErrorOccurred();
+		ev.debuggerErrorCode = error_codes::cannot_write_process_memory;
 
 		return false;
 	}
 
-	printf("Usunieto breakpoint, Instrukcja: %#08x, adres: %#08x\n", optcode, address);
 	_breakpoints->remove(address);
+
+	auto ev = BreakpointRemoved();
+	onBreakpointRemoved(ev);
 
 	return true;
 }
@@ -163,7 +175,6 @@ void Debugger::handle_process_created(DEBUG_EVENT& dbgEvent)
 	_threads[dbgEvent.dwThreadId] = dbgEvent.u.CreateProcessInfo.hThread;
 
 	auto ev = ProcessCreated();
-	ev.message = "Process created";
 	ev.processId = static_cast<unsigned long>(dbgEvent.dwProcessId);
 	ev.baseAddress = reinterpret_cast<unsigned long*>(dbgEvent.u.CreateProcessInfo.lpBaseOfImage);
 
@@ -182,7 +193,6 @@ void Debugger::handle_process_exited(DEBUG_EVENT& dbgEvent)
 
 	_processes.erase(dbgEvent.dwProcessId);
 	auto ev = ProcessExited();
-	ev.message = "Process finished. Handle closed.";
 	ev.processId = static_cast<unsigned long>(dbgEvent.dwProcessId);
 	ev.exitCode = static_cast<unsigned long>(dbgEvent.u.ExitProcess.dwExitCode);
 
@@ -194,7 +204,6 @@ void Debugger::handle_thread_created(DEBUG_EVENT & dbgEvent)
 	_threads[dbgEvent.dwThreadId] = dbgEvent.u.CreateThread.hThread;
 	
 	auto ev = ThreadCreated();
-	ev.message = "Thread created successfully";
 	ev.threadId = static_cast<unsigned long>(dbgEvent.dwThreadId);
 
 	onThreadCreated(ev);
@@ -210,7 +219,6 @@ void Debugger::handle_thread_exited(DEBUG_EVENT& dbgEvent)
 	_threads.erase(dbgEvent.dwThreadId);
 
 	auto ev = ThreadExited();
-	ev.message = "Thread exited";
 	ev.threadId = static_cast<unsigned long>(dbgEvent.dwThreadId);
 	ev.exitCode = static_cast<unsigned long>(dbgEvent.u.ExitThread.dwExitCode);
 
@@ -225,16 +233,12 @@ void Debugger::handle_dll_loaded(DEBUG_EVENT& dbgEvent)
 	}
 
 	auto ev = DllLoaded();
-	ev.message = "Dll loaded";
-
 	onDllLoaded(ev);
 }
 
 void Debugger::handle_dll_unloaded(DEBUG_EVENT& dbgEvent)
 {
 	auto ev = DllUnloaded();
-	ev.message = "Dll unloaded";
-
 	onDllUnloaded(ev);
 }
 
@@ -243,11 +247,17 @@ void Debugger::handle_debug_output_string_received(DEBUG_EVENT& dbgEvent)
 	DWORD bytes_read;
 	BYTE buffer[2048];
 	 
-	ReadProcessMemory(_processes[dbgEvent.dwProcessId], dbgEvent.u.DebugString.lpDebugStringData, 
-		buffer, dbgEvent.u.DebugString.nDebugStringLength, &bytes_read);
+	if (!ReadProcessMemory(_processes[dbgEvent.dwProcessId], dbgEvent.u.DebugString.lpDebugStringData,
+		buffer, dbgEvent.u.DebugString.nDebugStringLength, &bytes_read))
+	{
+		auto ev = DebuggerErrorOccurred();
+		ev.debuggerErrorCode = error_codes::cannot_read_process_memory;
+		onError(ev);
+
+		return;
+	}
 
 	auto ev = OutputDebugStringReveived();
-	ev.message = "Output string received";
 	ev.value = std::string(reinterpret_cast<char*>(buffer)); //refactor not safe
 
 	onOutputStringReceived(ev);
