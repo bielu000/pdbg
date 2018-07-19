@@ -63,7 +63,7 @@ void Debugger::listenEvents()
 	} while (!_processes.empty());
 }
 
-bool Debugger::setSingleStep(DWORD threadId)
+bool Debugger::setSingleStep(DWORD threadId, bool raiseEvent)
 {
 	if (_threads.find(threadId) == _threads.end()) {
 		auto ev = DebuggerErrorOccurred();
@@ -99,14 +99,16 @@ bool Debugger::setSingleStep(DWORD threadId)
 		return false;
 	}
 
-	auto ev = SingleStepSet();
-	ev.threadId = static_cast<unsigned long>(threadId);
-	onSingleStepSet(ev);
+	if (raiseEvent) {
+		auto ev = SingleStepSet();
+		ev.threadId = static_cast<unsigned long>(threadId);
+		onSingleStepSet(ev);
+	}
 
 	return true;
 }
 
-bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess)
+bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent)
 {
 	BYTE originalInstruction;
 	SIZE_T bytesRead;
@@ -132,14 +134,17 @@ bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess)
 
 	_breakpoints->add(address, originalInstruction);
 	
-	auto ev = BreakpointAdded();
-	onBreakpointAdded(ev);
+	if (raiseEvent) {
+		auto ev = BreakpointAdded();
+		onBreakpointAdded(ev);
+	}
+
 
 	return true;
 
 }
 
-bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
+bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent)
 {
 	//add error messages
 	if (!_breakpoints->exist(address)) {
@@ -163,8 +168,10 @@ bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
 
 	_breakpoints->remove(address);
 
-	auto ev = BreakpointRemoved();
-	onBreakpointRemoved(ev);
+	if (raiseEvent) {
+		auto ev = BreakpointRemoved();
+		onBreakpointRemoved(ev);
+	}
 
 	return true;
 }
@@ -187,15 +194,16 @@ void Debugger::handle_process_created(DEBUG_EVENT& dbgEvent)
 	onProcessCreated(ev);
 }
 
+
 void Debugger::handle_process_exited(DEBUG_EVENT& dbgEvent)
 {
-	//CloseHandle(_processes[dbgEvent.dwProcessId]);
+	//CloseHandle(_processes[dbgEvent.dwProcessId]); //here is something wrong
 
 	_processes.erase(dbgEvent.dwProcessId);
 	auto ev = ProcessExited();
 	ev.processId = static_cast<unsigned long>(dbgEvent.dwProcessId);
 	ev.exitCode = static_cast<unsigned long>(dbgEvent.u.ExitProcess.dwExitCode);
-
+	
 	onProcessExited(ev);
 }
 
@@ -265,59 +273,79 @@ void Debugger::handle_debug_output_string_received(DEBUG_EVENT& dbgEvent)
 
 void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 {
-	std::cout << "First chance: " << dbgEvent.u.Exception.dwFirstChance << std::endl;
-
 	if (!dbgEvent.u.Exception.dwFirstChance) {
 		TerminateProcess(_processes[dbgEvent.dwProcessId], 1);
-		std::cout << "Terminate process!" << std::endl;
+		auto ev = ProcessTerminated();
+		onProcessTerminated(ev);
+
 		return;
 	}
 
 	DWORD debug_continue_status = DBG_EXCEPTION_NOT_HANDLED;
 
 	switch (dbgEvent.u.Exception.ExceptionRecord.ExceptionCode)
+	{//
+	case EXCEPTION_BREAKPOINT:
 	{
+		debug_continue_status = DBG_CONTINUE;
+
+		if (_breakpoints->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
+			this->removeBreakpoint(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId], false);
+			this->setSingleStep(dbgEvent.dwThreadId, false);
+			_pendingBreakpoints[dbgEvent.dwThreadId] = dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress;
+			//_pendingBreakpoints->add(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress);
+
+			CONTEXT ctx;
+			memset(&ctx, 0, sizeof(ctx));
+			ctx.ContextFlags = CONTEXT_CONTROL;
+
+			if (!GetThreadContext(_threads[dbgEvent.dwThreadId], &ctx)) {
+				auto ev = DebuggerErrorOccurred();
+				ev.debuggerErrorCode = error_codes::cannot_get_context;
+				onError(ev);
+
+				return;
+			}
+
+			ctx.Eip--;
+
+			if (!SetThreadContext(_threads[dbgEvent.dwThreadId], &ctx)) {
+				auto ev = DebuggerErrorOccurred();
+				ev.debuggerErrorCode = error_codes::cannot_set_context;
+				onError(ev);
+
+				return;
+			}
+
+			auto ev = BreakpointExceptionOccured();
+			ev.firstChance = static_cast<unsigned long>(dbgEvent.u.Exception.dwFirstChance);
+			onBreakpointExceptionOccured(ev);
+		}
+	}
+	break;
 		case EXCEPTION_SINGLE_STEP:
+		{
 			debug_continue_status = DBG_CONTINUE;
 
-			if (_pendingBreakpoints->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
-				this->addBreakpoint(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId]);
-				this->setSingleStep(dbgEvent.dwThreadId);
-				_pendingBreakpoints->remove(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress);
+			if (_pendingBreakpoints.find(dbgEvent.dwThreadId) != _pendingBreakpoints.end()) {
+				this->addBreakpoint(_pendingBreakpoints[dbgEvent.dwThreadId], _processes[dbgEvent.dwProcessId], false);
+				this->setSingleStep(dbgEvent.dwThreadId, false);
+				_pendingBreakpoints.erase(dbgEvent.dwThreadId);
+
+				return;
 			}
 
-			std::cout << "Single step!!!!" << std::endl;
-
+			auto ev = SingleStepExceptionOccured();
+			ev.firstChance = static_cast<unsigned long>(dbgEvent.u.Exception.dwFirstChance);
+			onSingleStepExceptionOccured(ev);
+		}
 			break;
-		case EXCEPTION_BREAKPOINT:
-			debug_continue_status = DBG_CONTINUE;
-			std::cout << "Breakpoint!" << std::endl;
 
-			if (_breakpoints->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
-				this->removeBreakpoint(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId]);
-				this->setSingleStep(dbgEvent.dwThreadId);
-				_pendingBreakpoints->add(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress);
-
-				CONTEXT ctx;
-				memset(&ctx, 0, sizeof(ctx));
-				ctx.ContextFlags = CONTEXT_CONTROL;
-
-				if (!GetThreadContext(_threads[dbgEvent.dwThreadId], &ctx)) {
-					std::cout << "Cannot get thread ctx in breakpoint." << std::endl;
-
-					return;
-				}
-
-				ctx.Eip--;
-
-				if (!SetThreadContext(_threads[dbgEvent.dwThreadId], &ctx)) {
-					std::cout << "Cannot set thread context. in EXCEPTION BREAPOINT" << std::endl;
-
-					return;
-				}
-			}
-
-			break;
+		default:
+			auto ev = UsualExceptionOccured();
+			ev.firstChance = static_cast<unsigned long>(dbgEvent.u.Exception.dwFirstChance);
+			onUsualExceptionOccured(ev);
+		break;
 	}
 
 	ContinueDebugEvent(dbgEvent.dwProcessId, dbgEvent.dwThreadId, debug_continue_status);

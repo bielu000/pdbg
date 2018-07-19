@@ -38,6 +38,11 @@ public:
 	unsigned int eventCode = event_codes::breakpoint_removed;
 };
 
+class ProcessTerminated : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::process_terminated;
+};
+
 
 //Debug events
 class ProcessCreated : public BaseEvent {
@@ -83,3 +88,20 @@ public:
 	std::string value;
 } ;
 
+class BreakpointExceptionOccured : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::breakpoint_exception_occured;
+	unsigned long firstChance; //maybe it should be DWORD?
+};
+
+class SingleStepExceptionOccured : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::single_step_exception_occured;
+	unsigned long firstChance; //maybe it should be DWORD?
+};
+
+class UsualExceptionOccured : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::usual_exception_occured;
+	unsigned long firstChance; //maybe it should be DWORD?
+};

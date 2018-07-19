@@ -12,7 +12,7 @@ void ConsoleController::run()
 
 void ConsoleController::handleDebuggerEvent(const DebuggerStarted& ev)
 {
-	std::cout << "Ev: Debugger Started" << std::endl;
+	std::cout << "Action - Event: Debugger Started" << std::endl;
 }
 
 void ConsoleController::handleDebuggerErrorEvent(const DebuggerErrorOccurred &ev)
@@ -20,10 +20,25 @@ void ConsoleController::handleDebuggerErrorEvent(const DebuggerErrorOccurred &ev
 	std::cout << "Error occured! Message: " << " System code: " << ev.systemErrorCode << std::endl;
 }
 
+void ConsoleController::handleSignleStepSet(const SingleStepSet &)
+{
+	std::cout << "Action done - single step set" << std::endl;
+}
+
+void ConsoleController::handleBreakpointAdded(const BreakpointAdded &)
+{
+	std::cout << "Action done - Breakpoint added" << std::endl;
+}
+
+void ConsoleController::handleBreakpointRemoved(const BreakpointRemoved &)
+{
+	std::cout << "Action done - Breakpoint removed" << std::endl;
+}
+
 void ConsoleController::handleProcessCreated(const ProcessCreated& ev)
 {
 	std::cout 
-		<< "Ev: Process created "
+		<< "Event: Process created "
 		<< " Process id: " << ev.processId 
 		<< " Base address: " << ev.baseAddress
 	<< std::endl;
@@ -32,7 +47,7 @@ void ConsoleController::handleProcessCreated(const ProcessCreated& ev)
 void ConsoleController::handleProcessExited(const ProcessExited & ev)
 {
 	std::cout
-		<< "Ev: Process exited "
+		<< "Event: Process exited "
 		<< " PID: " << ev.processId
 		<< " Exit code: " << ev.exitCode
 	<< std::endl;
@@ -41,7 +56,7 @@ void ConsoleController::handleProcessExited(const ProcessExited & ev)
 void ConsoleController::handleThreadCreated(const ThreadCreated& ev)
 {
 	std::cout
-		<< "Ev: Thread created" 
+		<< "Event: Thread created" 
 		<< " Thread id: " << ev.threadId
 		<< std::endl;
 }
@@ -49,25 +64,54 @@ void ConsoleController::handleThreadCreated(const ThreadCreated& ev)
 void ConsoleController::handleThreadExited(const ThreadExited & ev)
 {
 	std::cout
-		<< "Ev: Thread exited" 
+		<< "Event: Thread exited" 
 		<< " Thread id: " << ev.threadId
 		<< std::endl;
 }
 
 void ConsoleController::handleDllLoaded(const DllLoaded & ev)
 {
-	std::cout << "Ev. Dll loaded " << std::endl;
+	std::cout << "Event: Dll loaded " << std::endl;
 }
 
 void ConsoleController::handleDllUnloaded(const DllUnloaded & ev)
 {
-	std::cout << "Ev. Dll unloaded" << std::endl;
+	std::cout << "Event: Dll unloaded" << std::endl;
 }
 
 void ConsoleController::handleOutputDebugStringReceived(const OutputDebugStringReveived & ev)
 {
 	std::cout 
-		<< "Ev. message received "
+		<< "Event: message received "
 		<< "Value: " << ev.value 
+		<< std::endl;
+}
+
+void ConsoleController::handleSingleStepExceptionOccurred(const SingleStepExceptionOccured & ev)
+{
+	std::cout
+		<< "Event: Single-Step Exception "
+		<< " First chance: " << ev.firstChance
+		<< std::endl;
+}
+
+void ConsoleController::handleBreakpointExceptionOccurred(const BreakpointExceptionOccured & ev)
+{
+	std::cout
+		<< "Event: Breakpoint exception "
+		<< " First chance: " << ev.firstChance
+		<< std::endl;
+
+	std::string cmd;
+
+	std::cout << "Podaj komende:" << std::endl;
+	std::cin >> cmd;
+}
+
+void ConsoleController::handleUsualExceptionOccurred(const UsualExceptionOccured & ev)
+{
+	std::cout
+		<< "Event: Usual exception "
+		<< " First chance: " << ev.firstChance
 		<< std::endl;
 }
