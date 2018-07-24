@@ -56,6 +56,18 @@ public:
 		return std::move(_breakpoints[address]);
 	}
 
+	std::vector<std::shared_ptr<Breakpoint>> getAll()
+	{
+		std::vector<std::shared_ptr<Breakpoint>> v;
+
+		for (auto &x : _breakpoints)
+		{
+			v.push_back(x.second);
+		}
+
+		return v;
+	}
+
 private:
 	std::map<LPVOID, std::shared_ptr<Breakpoint>> _breakpoints;
 };

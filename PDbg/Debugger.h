@@ -5,6 +5,7 @@
 #include "Signal.h"
 #include "DebuggEvents.h"
 #include "Breakpoint.h"
+#include "BreakpointManager.h"
 
 class Debugger
 {
@@ -12,8 +13,8 @@ public:
 	Debugger() = default;
 	bool run(std::string application);
 	bool setSingleStep(DWORD threadId, bool raiseEvent = true);
-	bool addBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent = true);
-	bool removeBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent = true);
+	bool addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId);
+	bool removeBreakpoint(LPVOID address, HANDLE hProcess);
 
 	//Does this is not going outside scope? Think through
 	//DEBUGGER FUNCTIONALITY EVENTS
@@ -22,7 +23,7 @@ public:
 	signals::signal<void(const SingleStepSet&)> onSingleStepSet;
 	signals::signal<void(const BreakpointAdded&)> onBreakpointAdded;
 	signals::signal<void(const BreakpointRemoved&)> onBreakpointRemoved;
-	signals::signal<void(const ProcessTerminated&)> onProcessTerminated;;
+	signals::signal<void(const ProcessTerminated&)> onProcessTerminated;
 	
 	
 	//DEBUG EVENTS
@@ -42,10 +43,10 @@ public:
 private:
 	void listenEvents();
 
+	std::unique_ptr<BreakpointManager> _bpManager = std::make_unique<BreakpointManager>();
 	std::map<DWORD, HANDLE> _processes; //posiibly to replace with struct
 	std::map<DWORD, HANDLE> _threads; // the same as above
-	std::unique_ptr<Breakpoints> _breakpoints = std::make_unique<Breakpoints>();
-	std::map<DWORD, LPVOID> _pendingBreakpoints;
+	bool _notifySingleStep = FALSE;
 	DWORD _debugContinueStatus = DBG_CONTINUE;
 
 	//handes

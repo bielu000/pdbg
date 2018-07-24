@@ -10,6 +10,13 @@ void ConsoleController::run()
 	_debugger->run(application);
 }
 
+void ConsoleController::waitForCommand()
+{
+
+
+	getchar();
+}
+
 void ConsoleController::handleDebuggerEvent(const DebuggerStarted& ev)
 {
 	std::cout << "Action - Event: Debugger Started" << std::endl;
@@ -93,6 +100,8 @@ void ConsoleController::handleSingleStepExceptionOccurred(const SingleStepExcept
 		<< "Event: Single-Step Exception "
 		<< " First chance: " << ev.firstChance
 		<< std::endl;
+	
+	this->waitForCommand();
 }
 
 void ConsoleController::handleBreakpointExceptionOccurred(const BreakpointExceptionOccured & ev)
@@ -102,10 +111,7 @@ void ConsoleController::handleBreakpointExceptionOccurred(const BreakpointExcept
 		<< " First chance: " << ev.firstChance
 		<< std::endl;
 
-	std::string cmd;
-
-	std::cout << "Podaj komende:" << std::endl;
-	std::cin >> cmd;
+	this->waitForCommand();
 }
 
 void ConsoleController::handleUsualExceptionOccurred(const UsualExceptionOccured & ev)

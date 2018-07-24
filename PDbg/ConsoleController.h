@@ -50,5 +50,7 @@ public:
 
 private: 
 	std::shared_ptr<Debugger> _debugger;
+
+	void waitForCommand();
 };
 

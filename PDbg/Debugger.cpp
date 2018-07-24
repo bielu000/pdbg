@@ -108,71 +108,18 @@ bool Debugger::setSingleStep(DWORD threadId, bool raiseEvent)
 	return true;
 }
 
-bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent)
+bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId)
 {
-	BYTE originalInstruction;
-	SIZE_T bytesRead;
-	
-	if (!ReadProcessMemory(hProcess, address, &originalInstruction, sizeof(BYTE), &bytesRead)) {
-		auto ev = DebuggerErrorOccurred();
-		ev.debuggerErrorCode = error_codes::cannot_read_process_memory;
-		onError(ev);
-		
-		return false;
-	}
-
-	BYTE int3optcode = 0xCC;
-	SIZE_T bytesWritten;
-
-	if (!WriteProcessMemory(hProcess, address, &int3optcode, sizeof(BYTE), &bytesWritten)) {
-		auto ev = DebuggerErrorOccurred();
-		ev.debuggerErrorCode = error_codes::cannot_write_process_memory;
-		onError(ev);
-
-		return false;
-	}
-
-	_breakpoints->add(address, originalInstruction);
-	
-	if (raiseEvent) {
+	if (_bpManager->add(address, hProcess, threadId)) {
 		auto ev = BreakpointAdded();
 		onBreakpointAdded(ev);
+
+		return true;
 	}
-
-
-	return true;
-
 }
 
-bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess, bool raiseEvent)
+bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
 {
-	//add error messages
-	if (!_breakpoints->exist(address)) {
-		auto ev = DebuggerErrorOccurred();
-		ev.debuggerErrorCode = error_codes::breakpoint_not_exist;	
-		onError(ev);
-
-		return false;
-	}
-
-	auto bp = _breakpoints->get(address);
-	SIZE_T bytes_written;
-	BYTE optcode = bp->instruction();
-
-	if (!WriteProcessMemory(hProcess, bp->address(), &optcode, sizeof(BYTE), &bytes_written)) {
-		auto ev = DebuggerErrorOccurred();
-		ev.debuggerErrorCode = error_codes::cannot_write_process_memory;
-
-		return false;
-	}
-
-	_breakpoints->remove(address);
-
-	if (raiseEvent) {
-		auto ev = BreakpointRemoved();
-		onBreakpointRemoved(ev);
-	}
-
 	return true;
 }
 
@@ -189,7 +136,7 @@ void Debugger::handle_process_created(DEBUG_EVENT& dbgEvent)
 		CloseHandle(dbgEvent.u.CreateProcessInfo.hFile);
 	}
 
-	this->addBreakpoint(dbgEvent.u.CreateProcessInfo.lpStartAddress, dbgEvent.u.CreateProcessInfo.hProcess);
+	this->addBreakpoint(dbgEvent.u.CreateProcessInfo.lpStartAddress, dbgEvent.u.CreateProcessInfo.hProcess, dbgEvent.dwThreadId);
 
 	onProcessCreated(ev);
 }
@@ -284,16 +231,14 @@ void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 	DWORD debug_continue_status = DBG_EXCEPTION_NOT_HANDLED;
 
 	switch (dbgEvent.u.Exception.ExceptionRecord.ExceptionCode)
-	{//
+	{
 	case EXCEPTION_BREAKPOINT:
 	{
 		debug_continue_status = DBG_CONTINUE;
 
-		if (_breakpoints->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
-			this->removeBreakpoint(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId], false);
+		if (_bpManager->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
+			_bpManager->restoreOriginalByte(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId]);
 			this->setSingleStep(dbgEvent.dwThreadId, false);
-			_pendingBreakpoints[dbgEvent.dwThreadId] = dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress;
-			//_pendingBreakpoints->add(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress);
 
 			CONTEXT ctx;
 			memset(&ctx, 0, sizeof(ctx));
@@ -327,17 +272,18 @@ void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 		{
 			debug_continue_status = DBG_CONTINUE;
 
-			if (_pendingBreakpoints.find(dbgEvent.dwThreadId) != _pendingBreakpoints.end()) {
-				this->addBreakpoint(_pendingBreakpoints[dbgEvent.dwThreadId], _processes[dbgEvent.dwProcessId], false);
+			if (_bpManager->existAnyPending(dbgEvent.dwThreadId)) {
+				_bpManager->restorePending(dbgEvent.dwThreadId, _processes[dbgEvent.dwProcessId]);
 				this->setSingleStep(dbgEvent.dwThreadId, false);
-				_pendingBreakpoints.erase(dbgEvent.dwThreadId);
-
-				return;
+				this->_notifySingleStep = false;
+				break;
 			}
 
-			auto ev = SingleStepExceptionOccured();
-			ev.firstChance = static_cast<unsigned long>(dbgEvent.u.Exception.dwFirstChance);
-			onSingleStepExceptionOccured(ev);
+			if (this->_notifySingleStep) {
+				auto ev = SingleStepExceptionOccured();
+				ev.firstChance = static_cast<unsigned long>(dbgEvent.u.Exception.dwFirstChance);
+				onSingleStepExceptionOccured(ev);
+			}
 		}
 			break;
 
@@ -353,6 +299,15 @@ void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 
 
 /**
+	Do zrobienia :
+		- lista watkow,
+		- dodawanie braekpointa
+		- usuwanie breakpointa 
+		- lista breakpointow
+		- ustawianie trap flagi
+		- deasemblaccja kodu 
+
+
 	dopoki procesy.liczba > 0 :
 		czekaj na zdarzenie deubggera
 		obsluz zdarzenie:

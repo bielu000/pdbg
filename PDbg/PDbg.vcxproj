@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Breakpoint.h" />
+    <ClInclude Include="BreakpointManager.h" />
     <ClInclude Include="ConsoleController.h" />
     <ClInclude Include="Debugger.h" />
     <ClInclude Include="DebuggEvents.h" />
@@ -160,6 +161,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BreakpointManager.cpp" />
     <ClCompile Include="ConsoleController.cpp" />
     <ClCompile Include="Debugger.cpp" />
     <ClCompile Include="PDbg.cpp" />
