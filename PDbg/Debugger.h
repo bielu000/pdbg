@@ -11,13 +11,17 @@ class Debugger
 {
 public:
 	Debugger() = default;
+
+	//Debugger funcionalit
 	bool run(std::string application);
 	bool setSingleStep(DWORD threadId, bool raiseEvent = true);
 	bool addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId);
 	bool removeBreakpoint(LPVOID address, HANDLE hProcess);
+	std::vector<std::shared_ptr<nBreakpoint>> getBreakpoints();
+	std::vector<DWORD> getThreads();
 
 	//Does this is not going outside scope? Think through
-	//DEBUGGER FUNCTIONALITY EVENTS
+	//DEBUGGER COMMAND EVENTS
 	signals::signal<void(const DebuggerStarted&)> onStarted;
 	signals::signal<void(const DebuggerErrorOccurred&)> onError;
 	signals::signal<void(const SingleStepSet&)> onSingleStepSet;
@@ -26,7 +30,7 @@ public:
 	signals::signal<void(const ProcessTerminated&)> onProcessTerminated;
 	
 	
-	//DEBUG EVENTS
+	//DEBUGGER DEBUG EVENTS
 	signals::signal<void(const ProcessCreated&)> onProcessCreated;
 	signals::signal<void(const ProcessExited&)> onProcessExited;
 	signals::signal<void(const ThreadCreated&)> onThreadCreated;

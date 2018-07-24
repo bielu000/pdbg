@@ -11,5 +11,10 @@ public:
 	{
 
 	}
+
+	void event()
+	{
+
+	}
 };
 

@@ -12,9 +12,27 @@ void ConsoleController::run()
 
 void ConsoleController::waitForCommand()
 {
+	while (true)
+	{
+		std::string command;
+		std::cout << "(pdbg): ";
+		std::cin >> command;
 
-
-	getchar();
+		if (command == "threads") {
+			auto threads = _debugger->getThreads();
+			std::cout << "Threds:" << std::endl;
+			for (auto &x : threads) {
+				std::cout << " - " << x << std::endl;
+			}
+		}
+		else if (command == "bps") {
+			auto bps = _debugger->getBreakpoints();
+			std::cout << "Breakpoints" << std::endl;
+			for (auto x : bps) {
+				std::cout << " - " << x->address() << std::endl;
+			}
+		}
+	}
 }
 
 void ConsoleController::handleDebuggerEvent(const DebuggerStarted& ev)

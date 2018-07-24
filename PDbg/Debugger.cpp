@@ -7,6 +7,8 @@
 #include "EventCodes.h"
 #include "ErrorCodes.h"
 
+//DEBUGGER FUNCIONALITY
+
 bool Debugger::run(std::string application)
 {	
 	STARTUPINFO si;
@@ -116,12 +118,41 @@ bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId)
 
 		return true;
 	}
+
+	auto ev = DebuggerErrorOccurred();
+	ev.eventCode = error_codes::cannot_add_breakpoint;
+	ev.systemErrorCode = GetLastError();
+
+	onError(ev);
+	return false;
 }
 
 bool Debugger::removeBreakpoint(LPVOID address, HANDLE hProcess)
 {
 	return true;
 }
+
+std::vector<std::shared_ptr<nBreakpoint>> Debugger::getBreakpoints()
+{
+	return _bpManager->getAll();
+}
+
+std::vector<DWORD> Debugger::getThreads()
+{
+	std::vector<DWORD> v;
+
+	for (auto &x : this->_threads) {
+		v.push_back(x.first);
+	}
+
+	return v;
+}
+
+
+
+
+
+/// DEBUG EVENTS 
 
 void Debugger::handle_process_created(DEBUG_EVENT& dbgEvent)
 {
@@ -237,7 +268,14 @@ void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 		debug_continue_status = DBG_CONTINUE;
 
 		if (_bpManager->exist(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress)) {
-			_bpManager->restoreOriginalByte(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId]);
+			if (!_bpManager->restoreOriginalByte(dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress, _processes[dbgEvent.dwProcessId])) {
+				auto ev = DebuggerErrorOccurred();
+				ev.debuggerErrorCode = error_codes::cannot_restore_original_byte;
+				ev.systemErrorCode = GetLastError();
+				onError(ev);
+				
+				break;
+			}
 			this->setSingleStep(dbgEvent.dwThreadId, false);
 
 			CONTEXT ctx;
@@ -273,7 +311,13 @@ void Debugger::handle_exception_thrown(DEBUG_EVENT& dbgEvent)
 			debug_continue_status = DBG_CONTINUE;
 
 			if (_bpManager->existAnyPending(dbgEvent.dwThreadId)) {
-				_bpManager->restorePending(dbgEvent.dwThreadId, _processes[dbgEvent.dwProcessId]);
+				if (!_bpManager->restorePending(dbgEvent.dwThreadId, _processes[dbgEvent.dwProcessId])) {
+					auto ev = DebuggerErrorOccurred();
+					ev.debuggerErrorCode = error_codes::cannot_restore_pending_breakpoint;
+					ev.systemErrorCode = GetLastError();
+					onError(ev);
+					break;
+				}
 				this->setSingleStep(dbgEvent.dwThreadId, false);
 				this->_notifySingleStep = false;
 				break;
