@@ -6,13 +6,8 @@ namespace signals {
 
 	template<typename T>
 	class signal {
-	private:
-		std::vector<std::function<T>> _listeners;
-
 	public:
-		signal() = default;
-		~signal() = default;
-
+		std::vector<std::function<T>> _listeners;
 		void operator()() const
 		{
 			for (auto &x : _listeners)
@@ -29,6 +24,8 @@ namespace signals {
 				x(args...);
 			}
 		}
+		signal() = default;
+		~signal() = default;
 
 		void connect(std::function<T> callback)
 		{

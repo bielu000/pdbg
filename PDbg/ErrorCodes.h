@@ -5,6 +5,7 @@ namespace error_codes {
 	enum error_code {
 		cannot_add_breakpoint = CANNOT_ADD_BREAKPOINT,
 		cannot_remove_breakpoint = CANNOT_REMOVE_BREAKPOINT,
+		cannot_set_single_step = CANNOT_SET_SINGLE_STEP,
 		cannot_restore_original_byte = CANNOT_RESTORE_ORGINAL_BYTE,
 		cannot_restore_pending_breakpoint = CANNOT_RESTORE_PENDING_BREAKPOINT,
 		cannot_create_process = CANNOT_CREATE_PROCESS,

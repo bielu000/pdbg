@@ -3,27 +3,29 @@
 #include "DebuggEvents.h"
 #include "Debugger.h"
 #include "IAppController.h"
+#include "EventBus.h"
 class ConsoleController : IAppController
 {
 public:
-	ConsoleController(std::shared_ptr<Debugger> dbg)
-		: _debugger(dbg)
+	ConsoleController(std::shared_ptr<Debugger> dbg, std::shared_ptr<EventBus> bus)
+		: _debugger(dbg),
+		 _bus(bus)
 	{
-		_debugger->onStarted.connect(std::bind(&ConsoleController::handleDebuggerEvent, this, std::placeholders::_1));
-		_debugger->onError.connect(std::bind(&ConsoleController::handleDebuggerErrorEvent, this, std::placeholders::_1));
-		_debugger->onBreakpointAdded.connect(std::bind(&ConsoleController::handleBreakpointAdded, this, std::placeholders::_1));
-		_debugger->onBreakpointRemoved.connect(std::bind(&ConsoleController::handleBreakpointRemoved, this, std::placeholders::_1));
+		_bus->onStarted.connect(std::bind(&ConsoleController::handleDebuggerEvent, this, std::placeholders::_1));
+		_bus->onError.connect(std::bind(&ConsoleController::handleDebuggerErrorEvent, this, std::placeholders::_1));
+		_bus->onBreakpointAdded.connect(std::bind(&ConsoleController::handleBreakpointAdded, this, std::placeholders::_1));
+		_bus->onBreakpointRemoved.connect(std::bind(&ConsoleController::handleBreakpointRemoved, this, std::placeholders::_1));
 
-		_debugger->onProcessCreated.connect(std::bind(&ConsoleController::handleProcessCreated, this, std::placeholders::_1)); //new
-		_debugger->onProcessExited.connect(std::bind(&ConsoleController::handleProcessExited, this, std::placeholders::_1)); //new
-		_debugger->onThreadCreated.connect(std::bind(&ConsoleController::handleThreadCreated, this, std::placeholders::_1)); //new
-		_debugger->onThreadExited.connect(std::bind(&ConsoleController::handleThreadExited, this, std::placeholders::_1)); //new
-		_debugger->onDllLoaded.connect(std::bind(&ConsoleController::handleDllLoaded, this, std::placeholders::_1)); //new
-		_debugger->onDllUnloaded.connect(std::bind(&ConsoleController::handleDllUnloaded, this, std::placeholders::_1)); //new
-		_debugger->onOutputStringReceived.connect(std::bind(&ConsoleController::handleOutputDebugStringReceived, this, std::placeholders::_1)); //new
-		_debugger->onSingleStepExceptionOccured.connect(std::bind(&ConsoleController::handleSingleStepExceptionOccurred, this, std::placeholders::_1)); //new
-		_debugger->onBreakpointExceptionOccured.connect(std::bind(&ConsoleController::handleBreakpointExceptionOccurred, this, std::placeholders::_1)); //new
-		_debugger->onUsualExceptionOccured.connect(std::bind(&ConsoleController::handleUsualExceptionOccurred, this, std::placeholders::_1)); //new
+		_bus->onProcessCreated.connect(std::bind(&ConsoleController::handleProcessCreated, this, std::placeholders::_1)); //new
+		_bus->onProcessExited.connect(std::bind(&ConsoleController::handleProcessExited, this, std::placeholders::_1)); //new
+		_bus->onThreadCreated.connect(std::bind(&ConsoleController::handleThreadCreated, this, std::placeholders::_1)); //new
+		_bus->onThreadExited.connect(std::bind(&ConsoleController::handleThreadExited, this, std::placeholders::_1)); //new
+		_bus->onDllLoaded.connect(std::bind(&ConsoleController::handleDllLoaded, this, std::placeholders::_1)); //new
+		_bus->onDllUnloaded.connect(std::bind(&ConsoleController::handleDllUnloaded, this, std::placeholders::_1)); //new
+		_bus->onOutputStringReceived.connect(std::bind(&ConsoleController::handleOutputDebugStringReceived, this, std::placeholders::_1)); //new
+		_bus->onSingleStepExceptionOccured.connect(std::bind(&ConsoleController::handleSingleStepExceptionOccurred, this, std::placeholders::_1)); //new
+		_bus->onBreakpointExceptionOccured.connect(std::bind(&ConsoleController::handleBreakpointExceptionOccurred, this, std::placeholders::_1)); //new
+		_bus->onUsualExceptionOccured.connect(std::bind(&ConsoleController::handleUsualExceptionOccurred, this, std::placeholders::_1)); //new
 	}
 
 	~ConsoleController() = default;
@@ -50,6 +52,7 @@ public:
 
 private: 
 	std::shared_ptr<Debugger> _debugger;
+	std::shared_ptr<EventBus> _bus;
 
 	void waitForCommand();
 };

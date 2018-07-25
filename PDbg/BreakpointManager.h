@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <vector>
 #include <memory>
+#include "ResourceManagerr.h"
 
 class nBreakpoint {
 public:
@@ -27,7 +28,9 @@ private:
 class BreakpointManager
 {
 public:
-	BreakpointManager() = default;
+	BreakpointManager(std::shared_ptr<ResourceManager> &rm)
+		: _rmManager(rm)
+	{}
 	~BreakpointManager() = default;
 
 	bool add(LPVOID address, HANDLE hrProcess, DWORD threadid);
@@ -44,5 +47,6 @@ private:
 	std::vector<std::shared_ptr<nBreakpoint>> _bps;
 	std::shared_ptr<nBreakpoint> add_to_memory(LPVOID address, HANDLE hProcess, DWORD threadid);
 	bool remove_from_memory(LPVOID address, HANDLE hProcess);
+	std::shared_ptr<ResourceManager> _rmManager;
 };
 

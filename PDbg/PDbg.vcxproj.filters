@@ -51,6 +51,18 @@
     <ClInclude Include="BreakpointManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebugEventHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManagerr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EventBus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SingleStepper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -66,6 +78,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BreakpointManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEventHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SingleStepper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
