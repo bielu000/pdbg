@@ -16,8 +16,7 @@ void ConsoleController::waitForCommand()
 	{
 		std::string command;
 		std::cout << "(pdbg): ";
-
-		command = "ni";
+		std::cin >> command;
 
 		if (command == "threads") {
 			auto threads = _debugger->getThreads();

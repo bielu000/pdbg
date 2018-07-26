@@ -10,7 +10,20 @@
 #include "ResourceManagerr.h"
 #include "SingleStepper.h"
 
-class Debugger
+class IDebugger {
+public:
+	virtual bool run(std::string application) = 0;
+	virtual bool setSingleStep(DWORD threadId, bool raiseEvent = true) = 0;
+	virtual bool jumpNextInstruction() = 0;
+	virtual bool addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId) = 0;
+	virtual bool removeBreakpoint(LPVOID address, HANDLE hProcess) = 0;
+	virtual std::vector<std::shared_ptr<nBreakpoint>> getBreakpoints() = 0;
+	virtual std::vector<DWORD> getThreads() = 0;
+
+	virtual ~IDebugger() = default;
+};
+
+class Debugger : public IDebugger
 {
 public:
 	Debugger(
