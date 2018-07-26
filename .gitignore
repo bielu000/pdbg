@@ -1,3 +1,5 @@
 Debug/*
 Release/*
 .vs/*
+PDbg/Debug/*
+PDbg/Release

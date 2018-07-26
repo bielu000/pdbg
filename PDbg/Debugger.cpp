@@ -48,24 +48,26 @@ void Debugger::listenEvents()
 		DEBUG_EVENT dbgEvent;
 		WaitForDebugEvent(&dbgEvent, INFINITE);
 
+		_currentListenThread = dbgEvent.dwThreadId;
+		
 		switch (dbgEvent.dwDebugEventCode)
 		{
 			case CREATE_PROCESS_DEBUG_EVENT: 
-				_dbgEventHandler->handle(dbgEvent.u.CreateProcessInfo, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.CreateProcessInfo, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case EXIT_PROCESS_DEBUG_EVENT:  
-				_dbgEventHandler->handle(dbgEvent.u.ExitProcess, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.ExitProcess, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case CREATE_THREAD_DEBUG_EVENT:  
-				_dbgEventHandler->handle(dbgEvent.u.CreateThread, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.CreateThread, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case EXIT_THREAD_DEBUG_EVENT:   
-				_dbgEventHandler->handle(dbgEvent.u.ExitThread, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.ExitThread, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case LOAD_DLL_DEBUG_EVENT:      
-				_dbgEventHandler->handle(dbgEvent.u.LoadDll, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.LoadDll, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case UNLOAD_DLL_DEBUG_EVENT:     
-				_dbgEventHandler->handle(dbgEvent.u.UnloadDll, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.UnloadDll, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case OUTPUT_DEBUG_STRING_EVENT:  
-				_dbgEventHandler->handle(dbgEvent.u.DebugString, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.DebugString, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case EXCEPTION_DEBUG_EVENT:      
-				_dbgEventHandler->handle(dbgEvent.u.Exception, dbgEvent.dwProcessId, dbgEvent.dwProcessId); break;
+				_dbgEventHandler->handle(dbgEvent.u.Exception, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 		}
 		ContinueDebugEvent(dbgEvent.dwProcessId, dbgEvent.dwThreadId, DBG_CONTINUE);
 	} while (_rmManager->anyProcessExist());
@@ -87,20 +89,35 @@ bool Debugger::setSingleStep(DWORD threadId, bool raiseEvent)
 	return true;
 }
 
+bool Debugger::jumpNextInstruction()
+{
+	std::cout << "Dodac event jump next instructionm" << std::endl;
+
+	this->setSingleStep(_currentListenThread);
+
+	CONTEXT ctx;
+	memset(&ctx, 0, sizeof(ctx));
+
+	ctx.ContextFlags = CONTEXT_CONTROL;
+
+	GetThreadContext(_rmManager->getThread(_currentListenThread), &ctx);
+
+	std::cout <<  "EIP: " << ctx.Eip << std::endl;
+
+	return true;
+}
+
+
 bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId)
 {
 	if (_bpManager->add(address, hProcess, threadId)) {
 		auto ev = BreakpointAdded();
-		onBreakpointAdded(ev);
+		_bus->event(ev);
 
 		return true;
 	}
 
-	auto ev = DebuggerErrorOccurred();
-	ev.eventCode = error_codes::cannot_add_breakpoint;
-	ev.systemErrorCode = GetLastError();
-
-	onError(ev);
+	_bus->error(error_codes::cannot_add_breakpoint, GetLastError());
 	return false;
 }
 
@@ -116,13 +133,7 @@ std::vector<std::shared_ptr<nBreakpoint>> Debugger::getBreakpoints()
 
 std::vector<DWORD> Debugger::getThreads()
 {
-	std::vector<DWORD> v;
-
-	for (auto &x : this->_threads) {
-		v.push_back(x.first);
-	}
-
-	return v;
+	return _rmManager->getAllThreadPids();
 }
 
 

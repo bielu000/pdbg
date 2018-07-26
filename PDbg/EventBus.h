@@ -10,7 +10,7 @@ public:
 	//ERRORS
 	void error(DWORD error_code, DWORD system_code = 0) {
 		auto ev = DebuggerErrorOccurred();
-		ev.eventCode = error_code;
+		ev.debuggerErrorCode = error_code;
 		ev.systemErrorCode = system_code;
 
 		onError(ev);

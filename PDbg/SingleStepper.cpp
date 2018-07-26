@@ -4,7 +4,7 @@
 
 bool SingleStepper::setSignleStep(DWORD threadId)
 {
-	if (_rmManager->getThread(threadId) == NULL) {
+	if (!_rmManager->threadExist(threadId)) {
 		_bus->error(error_codes::thread_not_exits);
 
 		return false;

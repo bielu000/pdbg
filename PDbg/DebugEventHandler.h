@@ -4,6 +4,7 @@
 #include "EventBus.h"
 #include <memory>
 #include "BreakpointManager.h"
+#include "SingleStepper.h"
 
 class IDebugEventHandler {
 public:
@@ -20,10 +21,16 @@ public:
 class DebugEventHandler : public IDebugEventHandler
 {
 public:
-	DebugEventHandler(std::shared_ptr<EventBus> bus, std::shared_ptr<ResourceManager> &rm, std::shared_ptr<BreakpointManager> bp)
+	DebugEventHandler(
+		std::shared_ptr<EventBus> bus, 
+		std::shared_ptr<ResourceManager> &rm, 
+		std::shared_ptr<BreakpointManager>& bp, 
+		std::shared_ptr<ISingleStepper> stepper
+	)
 		: _bus(bus),
 		  _rmManager(rm),
-		 _bpManager(bp)
+		 _bpManager(bp), 
+		_stepper(stepper)
 	{}
 	virtual ~DebugEventHandler() = default;
 
@@ -39,6 +46,8 @@ public:
 private:
 	std::shared_ptr<ResourceManager> _rmManager;
 	std::shared_ptr<BreakpointManager> _bpManager;
+	std::shared_ptr<ISingleStepper> _stepper;
 	std::shared_ptr<EventBus> _bus;
+	bool _silenSingleStepMode = false;
 };
 

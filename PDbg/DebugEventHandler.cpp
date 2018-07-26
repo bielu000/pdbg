@@ -17,6 +17,10 @@ void DebugEventHandler::handle(CREATE_PROCESS_DEBUG_INFO& dbgEvent, DWORD proces
 	ev.processId = static_cast<unsigned long>(processId);
 	ev.baseAddress = reinterpret_cast<unsigned long*>(dbgEvent.lpBaseOfImage);
 
+	std::cout << "Start address" << dbgEvent.lpStartAddress << std::endl;
+
+	_bpManager->add(dbgEvent.lpStartAddress, dbgEvent.hProcess, threadId);
+
 	_bus->event(ev);
 }
 
@@ -100,8 +104,6 @@ void DebugEventHandler::handle(OUTPUT_DEBUG_STRING_INFO& dbgEvent, DWORD process
 
 void DebugEventHandler::handle(EXCEPTION_DEBUG_INFO& dbgEvent, DWORD processId, DWORD threadId)
 {
-	std::cout << "Handle EXCEPTION_DEBUG_INFO" << std::endl;
-
 	if (!dbgEvent.dwFirstChance) {
 		TerminateProcess(_rmManager->getProcess(processId), 1);
 		auto ev = ProcessTerminated();
@@ -124,7 +126,8 @@ void DebugEventHandler::handle(EXCEPTION_DEBUG_INFO& dbgEvent, DWORD processId, 
 
 				break;
 			}
-			//this->setSingleStep(threadId, false);
+
+			_stepper->setSignleStep(threadId);
 
 			CONTEXT ctx;
 			memset(&ctx, 0, sizeof(ctx));
@@ -144,10 +147,12 @@ void DebugEventHandler::handle(EXCEPTION_DEBUG_INFO& dbgEvent, DWORD processId, 
 				return;
 			}
 
-			auto ev = BreakpointExceptionOccured();
-			ev.firstChance = static_cast<unsigned long>(dbgEvent.dwFirstChance);
-			//onBreakpointExceptionOccured(ev);
+			//auto ev = BreakpointExceptionOccured();
+			//ev.threadId = threadId;
+			//ev.firstChance = static_cast<unsigned long>(dbgEvent.dwFirstChance);
+			//_bus->event(ev);
 		}
+
 	}
 	break;
 	case EXCEPTION_SINGLE_STEP:
@@ -157,19 +162,22 @@ void DebugEventHandler::handle(EXCEPTION_DEBUG_INFO& dbgEvent, DWORD processId, 
 		if (_bpManager->existAnyPending(threadId)) {
 			if (!_bpManager->restorePending(threadId, _rmManager->getProcess(processId))) {
 				_bus->error(error_codes::cannot_restore_pending_breakpoint, GetLastError());
-				
 				break;
 			}
-			//this->setSingleStep(threadId, false);
-			//this->_notifySingleStep = false;
+
+			auto ev = BreakpointExceptionOccured();
+			ev.threadId = threadId;
+			ev.firstChance = static_cast<unsigned long>(dbgEvent.dwFirstChance);
+			_bus->event(ev);
+
+			//_stepper->setSignleStep(threadId);
 			break;
 		}
 
-		//if (this->_notifySingleStep) {
-			//auto ev = SingleStepExceptionOccured();
-			//ev.firstChance = static_cast<unsigned long>(dbgEvent.dwFirstChance);
-			//onSingleStepExceptionOccured(ev);
-		//}
+		auto ev = SingleStepExceptionOccured();
+		ev.firstChance = static_cast<unsigned long>(dbgEvent.dwFirstChance);
+		_bus->event(ev);
+
 	}
 	break;
 

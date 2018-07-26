@@ -90,6 +90,7 @@ public:
 
 class BreakpointExceptionOccured : public BaseEvent {
 public:
+	DWORD threadId;
 	unsigned int eventCode = event_codes::breakpoint_exception_occured;
 	unsigned long firstChance; //maybe it should be DWORD?
 };

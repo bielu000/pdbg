@@ -16,21 +16,32 @@ void ConsoleController::waitForCommand()
 	{
 		std::string command;
 		std::cout << "(pdbg): ";
-		std::cin >> command;
+
+		command = "ni";
 
 		if (command == "threads") {
 			auto threads = _debugger->getThreads();
 			std::cout << "Threds:" << std::endl;
 			for (auto &x : threads) {
-				std::cout << " - " << x << std::endl;
+				std::cout << " -> " << x << std::endl;
 			}
 		}
 		else if (command == "bps") {
 			auto bps = _debugger->getBreakpoints();
-			std::cout << "Breakpoints" << std::endl;
-			for (auto x : bps) {
-				std::cout << " - " << x->address() << std::endl;
+			std::cout << "Breakpoints:" << std::endl;
+			for (auto &x : bps) {
+				std::cout << " -> 0x" << std::hex << x->address() << std::endl;
 			}
+		}
+		else if (command == "ni") {
+			_debugger->jumpNextInstruction();
+			break;
+		}
+		else if (command == "c") {
+			break;
+		}
+		else if (command == "cls") {
+			system("cls");
 		}
 	}
 }
@@ -42,7 +53,7 @@ void ConsoleController::handleDebuggerEvent(const DebuggerStarted& ev)
 
 void ConsoleController::handleDebuggerErrorEvent(const DebuggerErrorOccurred &ev)
 {
-	std::cout << "Error occured! Message: " << " System code: " << ev.systemErrorCode << std::endl;
+	std::cout << "Error occured! Code: " << ev.debuggerErrorCode  << " System code: " << ev.systemErrorCode << std::endl;
 }
 
 void ConsoleController::handleSignleStepSet(const SingleStepSet &)
@@ -126,6 +137,7 @@ void ConsoleController::handleBreakpointExceptionOccurred(const BreakpointExcept
 {
 	std::cout
 		<< "Event: Breakpoint exception "
+		<< " ThreadId:" << ev.threadId
 		<< " First chance: " << ev.firstChance
 		<< std::endl;
 
