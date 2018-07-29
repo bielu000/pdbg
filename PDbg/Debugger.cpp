@@ -91,8 +91,6 @@ bool Debugger::setSingleStep(DWORD threadId, bool raiseEvent)
 
 bool Debugger::jumpNextInstruction()
 {
-	std::cout << "Dodac event jump next instructionm" << std::endl;
-
 	this->setSingleStep(_currentListenThread);
 
 	CONTEXT ctx;
@@ -101,8 +99,6 @@ bool Debugger::jumpNextInstruction()
 	ctx.ContextFlags = CONTEXT_CONTROL;
 
 	GetThreadContext(_rmManager->getThread(_currentListenThread), &ctx);
-
-	std::cout <<  "EIP: " << ctx.Eip << std::endl;
 
 	return true;
 }

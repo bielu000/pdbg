@@ -8,13 +8,12 @@ bool BreakpointManager::add(LPVOID address, HANDLE hProcess, DWORD threadid)
 {
 	auto new_breakpoint = this->add_to_memory(address, hProcess, threadid);
 
-	if (new_breakpoint != nullptr) {
-		this->_bps.push_back(new_breakpoint);
-
-		return true;
+	if (new_breakpoint == nullptr) {
+		return false;
 	}
 
-	return false;
+	this->_bps.push_back(new_breakpoint);
+	return true;
 }
 
 std::shared_ptr<nBreakpoint> BreakpointManager::add_to_memory(LPVOID address, HANDLE hProcess, DWORD threadid)

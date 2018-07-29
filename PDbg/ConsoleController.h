@@ -1,9 +1,13 @@
 #pragma once
 #include <memory>
+#include <string>
+#include <map>
 #include "DebuggEvents.h"
 #include "Debugger.h"
 #include "IAppController.h"
 #include "EventBus.h"
+#include "ConsoleCommandHandler.h"
+
 class ConsoleController : IAppController
 {
 public:
@@ -30,7 +34,11 @@ public:
 
 	~ConsoleController() = default;
 
+	//Class specs
 	void run() override;
+	void registerCommand(std::shared_ptr<ICommand> cmd);
+
+	//Debugger events
 	void handleDebuggerEvent(const DebuggerStarted&);
 	void handleDebuggerErrorEvent(const DebuggerErrorOccurred&);
 	void handleSignleStepSet(const SingleStepSet&);
@@ -53,6 +61,7 @@ public:
 private: 
 	std::shared_ptr<Debugger> _debugger;
 	std::shared_ptr<EventBus> _bus;
+	std::map<std::string, std::shared_ptr<ICommand>> _commands;
 
 	void waitForCommand();
 };

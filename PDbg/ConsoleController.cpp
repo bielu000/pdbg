@@ -10,37 +10,54 @@ void ConsoleController::run()
 	_debugger->run(application);
 }
 
+void ConsoleController::registerCommand(std::shared_ptr<ICommand> cmd)
+{
+	if (this->_commands.find(cmd->optcode()) != this->_commands.end()) {
+		std::cout << "ConsoleController: Warrning! Command with optcode: " << cmd->optcode() << " already exist, and will be overwritten!" << std::endl;
+	}
+
+	this->_commands[cmd->optcode()] = cmd;
+
+	std::cout << "ConsoleController: registered command with optcode : " << cmd->optcode() << std::endl;
+}
+
 void ConsoleController::waitForCommand()
 {
 	while (true)
 	{
+		std::string line = "";
 		std::string command;
-		std::cout << "(pdbg): ";
-		std::cin >> command;
+		std::string args;
 
-		if (command == "threads") {
-			auto threads = _debugger->getThreads();
-			std::cout << "Threds:" << std::endl;
-			for (auto &x : threads) {
-				std::cout << " -> " << x << std::endl;
+		std::cout << "(pdbg): ";
+		std::getline(std::cin, line);
+
+		std::stringstream ss(line);
+
+		ss >> command >> args;
+
+		if (this->_commands.find(command) == this->_commands.end()) {
+			std::cout << "Commands:" << std::endl;
+			for (auto &x : this->_commands) {
+				std::cout << " -> " << x.first << std::endl;
 			}
+
+			continue;
 		}
-		else if (command == "bps") {
-			auto bps = _debugger->getBreakpoints();
-			std::cout << "Breakpoints:" << std::endl;
-			for (auto &x : bps) {
-				std::cout << " -> 0x" << std::hex << x->address() << std::endl;
-			}
+
+		auto x = this->_commands[command];
+		x->parse(args);
+
+		if (!x->validate()) {
+			std::cout << x->helper() << std::endl;
+			continue;
 		}
-		else if (command == "ni") {
-			_debugger->jumpNextInstruction();
+
+		x->handle(_debugger);
+		x->reset();
+
+		if (x->needBreak()) {
 			break;
-		}
-		else if (command == "c") {
-			break;
-		}
-		else if (command == "cls") {
-			system("cls");
 		}
 	}
 }
