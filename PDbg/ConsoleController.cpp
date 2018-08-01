@@ -27,14 +27,15 @@ void ConsoleController::waitForCommand()
 	{
 		std::string line = "";
 		std::string command;
-		std::string args;
 
 		std::cout << "(pdbg): ";
 		std::getline(std::cin, line);
 
 		std::stringstream ss(line);
+		ss >> command;
 
-		ss >> command >> args;
+		std::istreambuf_iterator<char> eos;
+		std::string args(std::istreambuf_iterator<char>(ss), eos);
 
 		if (this->_commands.find(command) == this->_commands.end()) {
 			std::cout << "Commands:" << std::endl;
@@ -80,6 +81,19 @@ void ConsoleController::handleSignleStepSet(const SingleStepSet &)
 void ConsoleController::handleBreakpointAdded(const BreakpointAdded &)
 {
 	std::cout << "Action done - Breakpoint added" << std::endl;
+}
+
+void ConsoleController::handleCodeDisassembled(const CodeDisassembled & ev)
+{
+	std::cout << "Disassembled code: " << std::endl;
+	for (auto &x : ev.instructions)
+	{
+		printf("\t 0x%08x        ", x->address());
+		std::cout << x->code() << std::endl;
+	}
+
+	std::cout << "--------------END----------------" << std::endl;
+
 }
 
 void ConsoleController::handleBreakpointRemoved(const BreakpointRemoved &)

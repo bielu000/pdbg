@@ -19,6 +19,7 @@ public:
 		_bus->onError.connect(std::bind(&ConsoleController::handleDebuggerErrorEvent, this, std::placeholders::_1));
 		_bus->onBreakpointAdded.connect(std::bind(&ConsoleController::handleBreakpointAdded, this, std::placeholders::_1));
 		_bus->onBreakpointRemoved.connect(std::bind(&ConsoleController::handleBreakpointRemoved, this, std::placeholders::_1));
+		_bus->onCodeDisassembled.connect(std::bind(&ConsoleController::handleCodeDisassembled, this, std::placeholders::_1));
 
 		_bus->onProcessCreated.connect(std::bind(&ConsoleController::handleProcessCreated, this, std::placeholders::_1)); //new
 		_bus->onProcessExited.connect(std::bind(&ConsoleController::handleProcessExited, this, std::placeholders::_1)); //new
@@ -42,6 +43,7 @@ public:
 	void handleDebuggerEvent(const DebuggerStarted&);
 	void handleDebuggerErrorEvent(const DebuggerErrorOccurred&);
 	void handleSignleStepSet(const SingleStepSet&);
+	void handleCodeDisassembled(const CodeDisassembled&);
 	void handleBreakpointAdded(const BreakpointAdded&);
 	void handleBreakpointRemoved(const BreakpointRemoved&);
 

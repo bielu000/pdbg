@@ -2,6 +2,7 @@
 #include <string>
 #include <Windows.h> //remove later
 #include "EventCodes.h"
+#include "Disassembler.h"
 
 class BaseEvent {
 public:
@@ -26,6 +27,14 @@ class SingleStepSet : public BaseEvent {
 public:
 	unsigned int eventCode = event_codes::single_step_set;
 	unsigned long threadId;
+};
+
+class CodeDisassembled : public BaseEvent {
+public:
+	unsigned int eventCode = event_codes::code_disassembled;
+	DWORD address;
+	unsigned int maxInstructions;
+	std::vector<std::shared_ptr<IInstruction>> instructions;
 };
 
 class BreakpointAdded : public BaseEvent {

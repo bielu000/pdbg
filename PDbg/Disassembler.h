@@ -5,15 +5,22 @@
 #include <vector>
 #include <memory>
 
-class Instruction {
+class IInstruction {
+public:
+	virtual ~IInstruction() = default;
+	virtual DWORD address() = 0;
+	virtual std::string code() = 0;
+};
+
+class Instruction : public IInstruction {
 public:
 	Instruction(DWORD address, std::string code)
 		: _address(address),
 		  _code(code)
 	{}
 
-	DWORD address() { return this->_address; }
-	std::string code() { return this->_code; }
+	DWORD address() override { return this->_address; }
+	std::string code() override { return this->_code; }
 
 private:
 	DWORD _address;
@@ -25,7 +32,8 @@ class IDisassembler
 {
 public :
 	virtual ~IDisassembler() = default;
-	virtual std::vector<std::shared_ptr<Instruction>> disassembly(HANDLE hProcess, HANDLE hThread, DWORD address, unsigned int instructionsAmount) = 0;
+	virtual bool disassembly(HANDLE hProcess, HANDLE hThread, DWORD address, unsigned int instructionsAmount) = 0;
+	virtual std::vector<std::shared_ptr<IInstruction>> getInstructions() = 0;
 };
 
 class Disassembler : public IDisassembler
@@ -33,12 +41,10 @@ class Disassembler : public IDisassembler
 public:
 	Disassembler() = default;
 	~Disassembler() = default;
+	bool disassembly(HANDLE hProcess, HANDLE hThraed, DWORD address, unsigned int instructionsAmount) override;
+	virtual std::vector<std::shared_ptr<IInstruction>> getInstructions() { return _disassembledInstructions; }
 
-	std::vector<std::shared_ptr<Instruction>> disassembly(
-		HANDLE hProcess, 
-		HANDLE hThraed, 
-		DWORD address, 
-		unsigned int instructionsAmount
-	) override;
+private:
+	std::vector<std::shared_ptr<IInstruction>> _disassembledInstructions;
 };
 

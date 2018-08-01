@@ -16,7 +16,8 @@ public:
 	virtual bool run(std::string application) = 0;
 	virtual bool setSingleStep(DWORD threadId, bool raiseEvent = true) = 0;
 	virtual bool jumpNextInstruction() = 0;
-	virtual bool addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId) = 0;
+	virtual bool disassembly(DWORD address, unsigned int instructions) = 0;
+	virtual bool addBreakpoint(DWORD address) = 0;
 	virtual bool removeBreakpoint(LPVOID address, HANDLE hProcess) = 0;
 	virtual std::vector<std::shared_ptr<nBreakpoint>> getBreakpoints() = 0;
 	virtual std::vector<DWORD> getThreads() = 0;
@@ -43,11 +44,12 @@ public:
 		_dbgEventHandler = std::make_shared<DebugEventHandler>(bus, _rmManager, _bpManager, _stepper);
 	}
 
-	//Debugger funcionalit
+	//Debugger funcionality
 	bool run(std::string application);
 	bool setSingleStep(DWORD threadId, bool raiseEvent = true);
 	bool jumpNextInstruction();
-	bool addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId);
+	bool disassembly(DWORD address, unsigned int instructions);
+	bool addBreakpoint(DWORD address);
 	bool removeBreakpoint(LPVOID address, HANDLE hProcess);
 	std::vector<std::shared_ptr<nBreakpoint>> getBreakpoints();
 	std::vector<DWORD> getThreads();
@@ -58,6 +60,7 @@ public:
 private:
 	void listenEvents();
 
+	DWORD _currentListenProcess;
 	DWORD _currentListenThread;
 
 	std::shared_ptr<EventBus> _bus;

@@ -71,28 +71,33 @@ public:
 	void parse(std::string cmdline)
 	{
 		std::stringstream ss(cmdline);
+		ss >> std::hex >> this->_address;
 
-		ss >> this->_address;
+		std::cout << "Address" << std::hex << this->_address << std::endl;
 	}
 	bool validate()
 	{
-		if (this->_address.length() == 0) {
+		if (this->_address == 0) {
 			return false;
 		}
+
+		return true;
 	}
 	void handle(const std::shared_ptr<IDebugger> & dbg) override
 	{
 		std::cout << "Add breakpoint" << std::endl;
 		std::cout << this->_address << std::endl;
+
+		dbg->addBreakpoint(this->_address);
 	}
 
 	void reset() override
 	{
-		_address.clear();
+		_address = 0;
 	}
 
 private:
-	std::string _address;
+	DWORD _address;
 	std::string _optcode = "bps-add";
 	std::string _helper = "Error! Add breakpoint. Usage bps-add address. Example: bps-add 0x432e4f";
 };
@@ -148,6 +153,63 @@ public:
 private:
 	std::string _optcode = "cls";
 	std::string _helper = "CLear console.";
+};
+
+
+class Disassembly : public ICommand
+{
+public:
+	bool needBreak() override { return false; }
+	std::string optcode() override { return this->_optcode; }
+	std::string helper() override { return this->_helper; }
+	void parse(std::string cmdline)
+	{
+		std::stringstream ss(cmdline);
+		
+		std::string tmp_address;
+
+		ss >> tmp_address;
+		ss >> this->_linesParam;
+		ss >> this->_linesAmount;
+
+		std::stringstream addressStream;
+		addressStream << tmp_address;
+		addressStream >> std::hex >> this->_address;
+	}
+	bool validate()
+	{
+		if (this->_address == 0) {
+			return false;
+		}
+
+		if (this->_linesParam.length() == 0) {
+			return false;
+		}
+
+		if (this->_linesAmount <= 0) {
+			return false;
+		}
+	}
+	void handle(const std::shared_ptr<IDebugger> & dbg) override
+	{
+		std::cout << "Disassembly" << std::endl;	
+
+		dbg->disassembly(this->_address, this->_linesAmount);
+	}
+
+	void reset() override
+	{
+		this->_address = 0;
+		this->_linesAmount = 0;
+		this->_linesParam.clear();
+	}
+
+private:
+	DWORD _address;
+	std::string _linesParam;
+	unsigned int _linesAmount;
+	std::string _optcode = "diss";
+	std::string _helper = "Error! Disassembly. Usage diss address -l x. Example: diss 0x432e4f -l 10";
 };
 
 class ConsoleCommandHandler

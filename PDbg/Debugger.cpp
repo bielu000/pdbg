@@ -48,6 +48,7 @@ void Debugger::listenEvents()
 		DEBUG_EVENT dbgEvent;
 		WaitForDebugEvent(&dbgEvent, INFINITE);
 
+		_currentListenProcess = dbgEvent.dwProcessId;
 		_currentListenThread = dbgEvent.dwThreadId;
 		
 		switch (dbgEvent.dwDebugEventCode)
@@ -67,13 +68,13 @@ void Debugger::listenEvents()
 			case OUTPUT_DEBUG_STRING_EVENT:  
 				_dbgEventHandler->handle(dbgEvent.u.DebugString, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case EXCEPTION_DEBUG_EVENT:     
-				std::cout << "Breakpoint" << std::endl;
+				//std::cout << "Breakpoint" << std::endl;
 
-				_dasm->disassembly(
-					_rmManager->getProcess(dbgEvent.dwProcessId), 
-					_rmManager->getThread(dbgEvent.dwThreadId),
-					(DWORD)dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress
-				);
+				//_dasm->disassembly(
+				//	_rmManager->getProcess(dbgEvent.dwProcessId), 
+				//	_rmManager->getThread(dbgEvent.dwThreadId),
+				//	(DWORD)dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress
+				//);
 				_dbgEventHandler->handle(dbgEvent.u.Exception, dbgEvent.dwProcessId, dbgEvent.dwThreadId); 
 				
 				break;
@@ -112,10 +113,36 @@ bool Debugger::jumpNextInstruction()
 	return true;
 }
 
-
-bool Debugger::addBreakpoint(LPVOID address, HANDLE hProcess, DWORD threadId)
+bool Debugger::disassembly(DWORD address, unsigned int maxInstructions)
 {
-	if (_bpManager->add(address, hProcess, threadId)) {
+	if (!_dasm->disassembly(
+		_rmManager->getProcess(_currentListenProcess),
+		_rmManager->getThread(_currentListenThread),
+		address,
+		maxInstructions)
+	)
+	{
+		_bus->error(error_codes::code_disassembly_failed);
+	}
+	auto lines = _dasm->getInstructions();
+
+	auto ev = CodeDisassembled();
+	ev.address = address;
+	ev.maxInstructions = maxInstructions;
+	ev.instructions = std::move(lines);
+
+	_bus->event(ev);
+
+	return true;
+}
+
+bool Debugger::addBreakpoint(DWORD address)
+{
+	if (_bpManager->add(
+		(LPVOID)address, 
+		_rmManager->getProcess(_currentListenProcess), 
+		_currentListenThread)
+	) {
 		auto ev = BreakpointAdded();
 		_bus->event(ev);
 

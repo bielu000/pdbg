@@ -20,6 +20,7 @@ public:
 	void event(DebuggerStarted& ev) { onStarted(ev); }
 	void event(DebuggerErrorOccurred& ev) { onError(ev); }
 	void event(SingleStepSet& ev) { onSingleStepSet(ev); }
+	void event(CodeDisassembled& ev) { onCodeDisassembled(ev); }
 	void event(BreakpointAdded& ev) { onBreakpointAdded(ev); }
 	void event(BreakpointRemoved& ev) { onBreakpointRemoved(ev); }
 	void event(ProcessTerminated& ev) { onProcessTerminated(ev); }
@@ -41,6 +42,7 @@ public:
 	signals::signal<void(const DebuggerStarted&)> onStarted;
 	signals::signal<void(const DebuggerErrorOccurred&)> onError;
 	signals::signal<void(const SingleStepSet&)> onSingleStepSet;
+	signals::signal<void(const CodeDisassembled&)> onCodeDisassembled;
 	signals::signal<void(const BreakpointAdded&)> onBreakpointAdded;
 	signals::signal<void(const BreakpointRemoved&)> onBreakpointRemoved;
 	signals::signal<void(const ProcessTerminated&)> onProcessTerminated;

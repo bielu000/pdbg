@@ -9,6 +9,7 @@ namespace event_codes {
 		debugger_started = DEBUGGER_STARTED,
 		debugger_error = DEBUGGER_ERROR_OCCURED,
 		single_step_set = SINGLE_STEP_SET,
+		code_disassembled = CODE_DISASSEMBLED,
 		breakpoint_added = BREAKPOINT_ADDED,
 		breakpoint_removed = BREAKPOINT_REMOVED,
 		process_terminated = PROCESS_TERMINATED,
