@@ -66,8 +66,17 @@ void Debugger::listenEvents()
 				_dbgEventHandler->handle(dbgEvent.u.UnloadDll, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
 			case OUTPUT_DEBUG_STRING_EVENT:  
 				_dbgEventHandler->handle(dbgEvent.u.DebugString, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
-			case EXCEPTION_DEBUG_EVENT:      
-				_dbgEventHandler->handle(dbgEvent.u.Exception, dbgEvent.dwProcessId, dbgEvent.dwThreadId); break;
+			case EXCEPTION_DEBUG_EVENT:     
+				std::cout << "Breakpoint" << std::endl;
+
+				_dasm->disassembly(
+					_rmManager->getProcess(dbgEvent.dwProcessId), 
+					_rmManager->getThread(dbgEvent.dwThreadId),
+					(DWORD)dbgEvent.u.Exception.ExceptionRecord.ExceptionAddress
+				);
+				_dbgEventHandler->handle(dbgEvent.u.Exception, dbgEvent.dwProcessId, dbgEvent.dwThreadId); 
+				
+				break;
 		}
 		ContinueDebugEvent(dbgEvent.dwProcessId, dbgEvent.dwThreadId, DBG_CONTINUE);
 	} while (_rmManager->anyProcessExist());

@@ -94,6 +94,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libudis86.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -154,6 +155,7 @@
     <ClInclude Include="DebugEventHandler.h" />
     <ClInclude Include="Debugger.h" />
     <ClInclude Include="DebuggEvents.h" />
+    <ClInclude Include="Disassembler.h" />
     <ClInclude Include="ErrorCodes.h" />
     <ClInclude Include="EventBus.h" />
     <ClInclude Include="EventCodes.h" />
@@ -167,10 +169,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BreakpointManager.cpp" />
-    <ClCompile Include="ConsoleCommandHandler.cpp" />
     <ClCompile Include="ConsoleController.cpp" />
     <ClCompile Include="DebugEventHandler.cpp" />
     <ClCompile Include="Debugger.cpp" />
+    <ClCompile Include="Disassembler.cpp" />
     <ClCompile Include="PDbg.cpp" />
     <ClCompile Include="SingleStepper.cpp" />
     <ClCompile Include="stdafx.cpp">

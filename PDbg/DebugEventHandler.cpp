@@ -123,7 +123,6 @@ void DebugEventHandler::handle(EXCEPTION_DEBUG_INFO& dbgEvent, DWORD processId, 
 		if (_bpManager->exist(dbgEvent.ExceptionRecord.ExceptionAddress)) {
 			if (!_bpManager->restoreOriginalByte(dbgEvent.ExceptionRecord.ExceptionAddress, _rmManager->getProcess(processId))) {
 				_bus->error(error_codes::cannot_restore_original_byte, GetLastError());
-
 				break;
 			}
 

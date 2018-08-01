@@ -9,6 +9,7 @@
 #include "DebugEventHandler.h"
 #include "ResourceManagerr.h"
 #include "SingleStepper.h"
+#include "Disassembler.h"
 
 class IDebugger {
 public:
@@ -26,14 +27,17 @@ public:
 class Debugger : public IDebugger
 {
 public:
-	Debugger(
+	Debugger
+	(
 		std::shared_ptr<EventBus>& bus, 
 		std::shared_ptr<ResourceManager>& rmManager, 
-		std::shared_ptr<ISingleStepper>& stepper
+		std::shared_ptr<ISingleStepper>& stepper,
+		std::shared_ptr<IDisassembler>& dasm
 	)
 		: _bus(bus),
 		 _rmManager(rmManager), 
-		 _stepper(stepper)
+		 _stepper(stepper),
+		_dasm(dasm)
 	{
 		_bpManager = std::make_shared<BreakpointManager>(_rmManager);
 		_dbgEventHandler = std::make_shared<DebugEventHandler>(bus, _rmManager, _bpManager, _stepper);
@@ -61,6 +65,7 @@ private:
 	std::shared_ptr<BreakpointManager> _bpManager;
 	std::shared_ptr<IDebugEventHandler> _dbgEventHandler;
 	std::shared_ptr<ISingleStepper> _stepper;
+	std::shared_ptr<IDisassembler> _dasm;
 };
 
 
